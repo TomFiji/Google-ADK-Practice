@@ -50,3 +50,17 @@ user_agent = LlmAgent(
 )
 
 print("✅ Agent created")
+
+
+# Create Session Service
+session_service = InMemorySessionService()  # Handles conversations
+
+# Create runner with BOTH services
+runner = Runner(
+    agent=user_agent,
+    app_name="MemoryDemoApp",
+    session_service=session_service,
+    memory_service=memory_service,  # Memory service is now available!
+)
+
+print("✅ Agent and Runner created with memory support!")
