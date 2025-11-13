@@ -75,7 +75,7 @@ def create_image_order(num_images: int, prompt: str, tool_context: ToolContext) 
             "order_id": f"ORD-{num_images}-HUMAN",
             "num_images": num_images,
             "image object": prompt,
-            "message": f"Order approved: {num_images} images"
+            "message": f"Order approved: {num_images} images of {prompt}"
         }
     else:
         return{
@@ -90,8 +90,8 @@ image_agent = LlmAgent(
   
   When users request to generate images:
    1. Use the create_image_order tool with the number of images given
-   2. If the order status is 'pending', inform the user that approval is required
-   3. If the order status is 'approved', use the generate_image_from_text tool to generate the approved number of images with the given prompt
+   2. If the order status is 'pending', inform the user that approval is required and wait for explicit approval
+   3. "If the order status is 'approved', call the generate_image_from_text tool multiple times (once for each approved image) to generate all requested images with the given prompt
    4. After receiving the final result, provide a clear summary including:
       - Order status (approved/rejected)
       - Order ID (if available)
@@ -187,6 +187,11 @@ async def run_imaging_workflow(query: str, auto_approve: bool = True):
     # STEP 3: If the event is present, it's a large order - HANDLE APPROVAL WORKFLOW
     if approval_info:
         print(f"⏸️  Pausing for approval...")
+        human_decision = input("Would you like to approve of this order? (y/n)")
+        if (human_decision.lower()=='y' or human_decision.lower()=='yes'):
+            auto_approve = True
+        else:
+            auto_approve = False
         print(f"🤔 Human Decision: {'APPROVE ✅' if auto_approve else 'REJECT ❌'}\n")
 
         # PATH A: Resume the agent by calling run_async() again with the approval decision
@@ -216,7 +221,7 @@ async def run_imaging_workflow(query: str, auto_approve: bool = True):
 
 async def main():
     """Main entry point for the script."""
-    await run_imaging_workflow("Create 1 image of a cat with sunglasses")
+    await run_imaging_workflow("Create 1 images of a photorealistic hand puppet with yarn for hair, 2 buttons for eyes, make it yellow and orange striped with a simple bedroom background blurred out")
 
 
 if __name__ == "__main__":
