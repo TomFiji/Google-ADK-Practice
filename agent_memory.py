@@ -34,3 +34,19 @@ async def run_session(
 
 
 print("✅ Helper functions defined.")
+
+memory_service = (
+    InMemoryMemoryService()
+)  # ADK's built-in Memory Service for development and testing
+
+APP_NAME = "MemoryDemoApp"
+USER_ID = "demo_user"
+
+# Create agent
+user_agent = LlmAgent(
+    model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
+    name="MemoryDemoAgent",
+    instruction="Answer user questions in simple words.",
+)
+
+print("✅ Agent created")
