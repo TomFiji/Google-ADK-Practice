@@ -39,24 +39,25 @@ BULK_REQUEST_THRESHOLD = 1
 mcp_image_server = McpToolset(
     connection_params=StdioConnectionParams(
         server_params=StdioServerParameters(
-            command="npx",
-            args=[
-                "-y",
-                "@modelcontextprotocol/server-everything"
-            ],
-            tool_filter=["getTinyImage"],
+            command="mcp-server-gemini-image-generator",
+            args=[],
+            env={
+                "GEMINI_API_KEY": os.environ['GOOGLE_API_KEY'],
+                "OUTPUT_IMAGE_PATH": os.environ['OUTPUT_IMAGE_PATH']
+            },
+            tool_filter=["generate_image_from_text"],
         ),
         timeout=30,
     )
 )
 
-def create_image_order(num_images: int, image_object: str, tool_context: ToolContext) -> dict:
+def create_image_order(num_images: int, prompt: str, tool_context: ToolContext) -> dict:
     if num_images <= BULK_REQUEST_THRESHOLD:
         return{
             "status": "approved",
             "order_id": f"ORD-{num_images}-AUTO",
             "num_images": num_images,
-            "image object": image_object,
+            "image object": prompt,
             "message" : f"Order auto-approved: {num_images} images"
         }
     if not tool_context.tool_confirmation:
@@ -73,9 +74,14 @@ def create_image_order(num_images: int, image_object: str, tool_context: ToolCon
             "status": "approved",
             "order_id": f"ORD-{num_images}-HUMAN",
             "num_images": num_images,
-            "image object": image_object,
+            "image object": prompt,
             "message": f"Order approved: {num_images} images"
         }
+    else:
+        return{
+            "status": "rejected",
+            "message": f"Order rejected: {num_images} images of {prompt}"
+        }    
 
 image_agent = LlmAgent(
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
@@ -85,11 +91,11 @@ image_agent = LlmAgent(
   When users request to generate images:
    1. Use the create_image_order tool with the number of images given
    2. If the order status is 'pending', inform the user that approval is required
-   3. Use the MCP Tool to generate an x amount of images for user queries, with x being number of images given in create image order
+   3. If the order status is 'approved', use the generate_image_from_text tool to generate the approved number of images with the given prompt
    4. After receiving the final result, provide a clear summary including:
       - Order status (approved/rejected)
       - Order ID (if available)
-      - Number of images and image object
+      - Number of images and image prompt
    5. Keep responses concise but informative""",
     tools=[FunctionTool(create_image_order), mcp_image_server]
 )
@@ -127,11 +133,7 @@ def print_agent_response(events):
         if event.content and event.content.parts:
             for part in event.content.parts:
                 if part.text:
-                    print(f"Agent > {part.text}")
-                for item in part.function_response.response.get("content", []):
-                    if item.get("type") == "image":
-                        # display(IPImage(data=base64.b64decode(item["data"])))  # Only works in Jupyter
-                        print(f"[Image generated - base64 data available]")    
+                    print(f"Agent > {part.text}") 
 
                     
 def create_approval_response(approval_info, approved):
@@ -214,7 +216,7 @@ async def run_imaging_workflow(query: str, auto_approve: bool = True):
 
 async def main():
     """Main entry point for the script."""
-    await run_imaging_workflow("Create 1 sample tiny image")
+    await run_imaging_workflow("Create 1 image of a cat with sunglasses")
 
 
 if __name__ == "__main__":
