@@ -42,3 +42,7 @@ product_catalog_agent = LlmAgent(
     """,
     tools=[get_product_info],  # Register the product lookup tool
 )
+
+product_catalog_a2a_app = to_a2a(
+    product_catalog_agent, port=8001  # Port where this agent will be served
+)
